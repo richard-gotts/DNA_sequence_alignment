@@ -1,0 +1,166 @@
+---
+title: "MB Assessed Practical 3"
+author: "Richard Gotts"
+date: "06/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1)
+```{r}
+DP_nt <- function(match_score,mismatch_score,gap_score,sequence_1,sequence_2)
+{
+  #Length of input sequences
+  len_seq1 <- nchar(sequence_1)
+  len_seq2 <- nchar(sequence_2)
+  
+  #Convert sequences to vectors
+  seq1 <- vector(mode="character", length=len_seq1)
+  for(i in 1:len_seq1)
+  {
+    seq1[i] <- substr(sequence_1,i,i)
+  }
+  seq2 <- vector(mode="character", length=len_seq2)
+  for(i in 1:len_seq2)
+  {
+    seq2[i] <- substr(sequence_2,i,i)
+  }
+  
+  #Initialise matrices
+  DPmatrix <- matrix(0,len_seq2+1,len_seq1+1)
+  traceback_v <- matrix(0,len_seq2+1,len_seq1+1)
+  traceback_h <- matrix(0,len_seq2+1,len_seq1+1)
+  traceback_d <- matrix(0,len_seq2+1,len_seq1+1)
+  
+  #Semi-global alignment, so first row and column remain filled with zeros
+  
+  #Fill out matrices
+  for(i in 1:len_seq1)
+  {
+    for(j in 1:len_seq2)
+    {
+      if(seq1[i] == seq2[j])
+      {
+        s_ji <- match_score
+      }else
+      {
+        s_ji <- mismatch_score
+      }
+      diagonal_score <- DPmatrix[j,i] + s_ji
+      horizontal_score <- DPmatrix[j+1,i] + gap_score
+      vertical_score <- DPmatrix[j,i+1] + gap_score
+      max_score <- max(c(vertical_score, horizontal_score, diagonal_score))
+      DPmatrix[j+1,i+1] <- max_score
+      if(max_score == vertical_score)
+      {
+        traceback_v[j+1,i+1] <- 1
+      }
+      if(max_score == horizontal_score)
+      {
+        traceback_h[j+1,i+1] <- 1
+      }
+      if(max_score == diagonal_score)
+      {
+        traceback_d[j+1,i+1] <- 1
+      }      
+    }
+  }
+  
+  #Initialise aligned sequence vectors
+  alnseq1 <- vector(mode="character", length=len_seq1+len_seq2)
+  alnseq2 <- vector(mode="character", length=len_seq1+len_seq2)
+  
+  #Find highest score in final row/column
+  #High score nearest the bottom right of the matrix is prioritised
+  max_finalcolumn <- DPmatrix[1,len_seq1+1]
+  for(j in 1:len_seq2+1)
+  {
+    if(DPmatrix[j,len_seq1+1] >= max_finalcolumn)
+    {
+      max_finalcolumn <- DPmatrix[j,len_seq1+1]
+      j0 <- j
+    }
+  }
+  max_finalrow <- DPmatrix[len_seq2+1,1]
+  for(i in 1:len_seq1+1)
+  {
+    if(DPmatrix[len_seq2+1,i] >= max_finalrow)
+    {
+      max_finalrow <- DPmatrix[len_seq2+1,i]
+      i0 <- i
+    }
+  }
+  
+  #Perform traceback
+  #Column high score is prioritised over row high score
+  alnpos <- len_seq1 + len_seq2  
+  if(max_finalcolumn >= max_finalrow)
+  {
+    i0 <- len_seq1
+    j0 <- j0 - 1
+  }else
+  {
+    i0 <- i0 - 1
+    j0 <- len_seq2
+  }
+  
+  while(i0 >= 0 && j0 >= 0)
+  {
+    if(1 == traceback_d[j0+1,i0+1])
+    {
+      alnseq1[alnpos] <- seq1[i0]
+      alnseq2[alnpos] <- seq2[j0]
+      i0 <- i0 - 1
+      j0 <- j0 - 1
+    }else if(1 == traceback_h[j0+1,i0+1])
+    {
+      alnseq1[alnpos] <- seq1[i0]
+      alnseq2[alnpos] <- "-"
+      i0 = i0 - 1
+    }else if(1 == traceback_v[j0+1,i0+1])
+    {
+      alnseq1[alnpos] <- "-"
+      alnseq2[alnpos] <- seq2[j0]
+      j0 <- j0 - 1
+    }else
+    {
+      break
+    }
+    alnpos <- alnpos - 1
+  }
+  
+  #Print alignment
+  print(paste(alnseq1, collapse = ""))
+  print(paste(alnseq2, collapse = ""))  
+}
+```
+
+## 2)
+
+### i)
+```{r}
+DP_nt(1,-1,-2,"AGTGTT","CAATG")
+```
+
+### ii)
+```{r}
+DP_nt(1,-1,-2,"GGTAATG","CTAGTGTT")
+```
+
+### iii)
+```{r}
+DP_nt(1,-1,-2,"GGGGGGCTCCAAGCCCAGAACACCAAGGGGCCCAAAAA","CTCCGACCCAGCACCACGTGGC")
+```
+
+### iv)
+```{r}
+DP_nt(1,-1,-2,"ATGGAGAGCCTTGTCCCTGGTTTCAACGAGAAAACACACGTCCTC","GTCCCCGGGTTTAATGAGAGGACTCATGTCCTCCTCAGTTTGCCTGTT")
+```
+
+### v)
+```{r}
+DP_nt(1,-1,-1,"ATGGAGAGCCTTGTCCCTGGTTTCAACGAGAAAACACACGTCCTC","GTCCCCGGGTTTAATGAGAGGACTCATGTCCTCCTCAGTTTGCCTGTT")
+```
